@@ -1,11 +1,4 @@
-
-import {
-  Box,
-  Typography,
-  IconButton,
-  Tooltip,
-  useTheme
-} from '@mui/material';
+import { Box, Typography, IconButton, Tooltip, useTheme } from '@mui/material';
 
 import { DarkMode, LightMode } from '@mui/icons-material';
 
@@ -84,10 +77,7 @@ export const Footer = () => {
         </Box>
 
         {/* Right: Theme Toggle */}
-        <Tooltip
-          title={isDarkMode ? 'Light Mode' : 'Dark Mode'}
-          arrow
-        >
+        <Tooltip title={isDarkMode ? 'Light Mode' : 'Dark Mode'} arrow>
           <IconButton
             onClick={toggleTheme}
             aria-label="Toggle theme"

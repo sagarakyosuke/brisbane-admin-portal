@@ -1,4 +1,6 @@
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useMemo, useState } from 'react';
+
+import type { MouseEvent } from 'react';
 
 import {
   Box,
@@ -31,8 +33,6 @@ import {
   Inventory2 as ArchivedIcon
 } from '@mui/icons-material';
 
-import { DataGrid, GridColDef, GridSelectionModel } from '@mui/x-data-grid';
-
 import {
   MOCK_POSTS,
   Post,
@@ -40,7 +40,12 @@ import {
   StatusFilter
 } from '@/features/utils/_mock/posts';
 
-import PostsTable from '@/features/pages/ManagePosts/sections/PostsTable';
+import DataTable from '@/features/components/Toolkits/Table';
+
+import type {
+  TableColumn,
+  TableRowData
+} from '@/features/components/Toolkits/Table';
 
 // ─────────────────────────────────────────────────────────────
 // Helpers
@@ -64,7 +69,9 @@ const formatRelativeDate = (iso: string): string => {
   if (diffDays === 0) return 'Today';
   if (diffDays === 1) return 'Yesterday';
   if (diffDays < 7) return `${diffDays} days ago`;
-  if (diffDays < 30) return `${Math.floor(diffDays / 7)} weeks ago`;
+  if (diffDays < 30) {
+    return `${Math.floor(diffDays / 7)} weeks ago`;
+  }
 
   return then.toLocaleDateString('en-US', {
     month: 'short',
@@ -167,7 +174,10 @@ const StatCard = ({
           <Typography
             variant="h5"
             fontWeight={800}
-            sx={{ color: accent, mt: 0.5 }}
+            sx={{
+              color: accent,
+              mt: 0.5
+            }}
           >
             {value}
           </Typography>
@@ -203,16 +213,20 @@ const ManagePostsPage = () => {
 
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
+  // ─────────────────────────────────────────────────────────
   // State
-  const [search, setSearch] = useState('');
+  // ─────────────────────────────────────────────────────────
 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('All');
 
-  const [selectionModel, setSelectionModel] = useState<GridSelectionModel>([]);
-
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
 
+  const [activePost, setActivePost] = useState<Post | null>(null);
+
+  // ─────────────────────────────────────────────────────────
   // Statistics
+  // ─────────────────────────────────────────────────────────
+
   const stats = useMemo(() => {
     const count = (status: PostStatus) =>
       MOCK_POSTS.filter((post) => post.status === status).length;
@@ -225,32 +239,46 @@ const ManagePostsPage = () => {
     };
   }, []);
 
-  // Filtered posts
-  const filteredRows = useMemo(() => {
-    const term = search.trim().toLowerCase();
+  // ─────────────────────────────────────────────────────────
+  // Filtered Posts
+  // ─────────────────────────────────────────────────────────
 
+  const filteredRows = useMemo(() => {
     return MOCK_POSTS.filter(
       (post) => statusFilter === 'All' || post.status === statusFilter
-    )
-      .filter(
-        (post) =>
-          term === '' ||
-          post.title.toLowerCase().includes(term) ||
-          post.author.toLowerCase().includes(term)
-      )
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [search, statusFilter]);
+    ).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [statusFilter]);
 
-  const hasActiveFilter = search !== '' || statusFilter !== 'All';
+  // DataTable uses TableRowData as its row type.
+  // Keep the values compatible with the shared component.
 
+  const tableRows: TableRowData[] = useMemo(
+    () =>
+      filteredRows.map((post) => ({
+        id: post.id,
+        title: post.title,
+        author: post.author,
+        status: post.status,
+        date: post.date,
+        actions: ''
+      })),
+    [filteredRows]
+  );
+
+  const hasActiveFilter = statusFilter !== 'All';
+
+  // ─────────────────────────────────────────────────────────
   // Handlers
-  const handleClearFilters = useCallback(() => {
-    setSearch('');
-    setStatusFilter('All');
-  }, []);
+  // ─────────────────────────────────────────────────────────
 
-  const handleMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+  const handleClearFilters = () => {
+    setStatusFilter('All');
+  };
+
+  const handleMenuOpen = (event: MouseEvent<HTMLElement>, post: Post) => {
     event.stopPropagation();
+
+    setActivePost(post);
     setMenuAnchor(event.currentTarget);
   };
 
@@ -258,7 +286,10 @@ const ManagePostsPage = () => {
     setMenuAnchor(null);
   };
 
-  // Status styling
+  // ─────────────────────────────────────────────────────────
+  // Status Styling
+  // ─────────────────────────────────────────────────────────
+
   const getStatusStyle = (status: PostStatus) => {
     switch (status) {
       case 'Published':
@@ -281,16 +312,19 @@ const ManagePostsPage = () => {
     }
   };
 
-  // DataGrid columns
-  const columns: GridColDef[] = [
+  // ─────────────────────────────────────────────────────────
+  // DataTable Columns
+  // ─────────────────────────────────────────────────────────
+
+  const columns: TableColumn[] = [
     {
-      field: 'title',
-      headerName: 'Post Title',
-      flex: 1.5,
+      id: 'title',
+      label: 'Post Title',
+      sortable: true,
       minWidth: 220,
 
-      renderCell: (params) => (
-        <Tooltip title={params.row.title} placement="top-start" arrow>
+      render: (value) => (
+        <Tooltip title={String(value)} placement="top-start" arrow>
           <Typography
             variant="body2"
             fontWeight={700}
@@ -301,57 +335,62 @@ const ManagePostsPage = () => {
               whiteSpace: 'nowrap'
             }}
           >
-            {params.row.title}
+            {String(value)}
           </Typography>
         </Tooltip>
       )
     },
     {
-      field: 'author',
-      headerName: 'Author',
-      flex: 1,
-      minWidth: 160,
+      id: 'author',
+      label: 'Author',
+      sortable: true,
+      minWidth: isMobile ? 130 : 160,
 
-      renderCell: (params) => (
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 1.5
-          }}
-        >
-          <Avatar
+      render: (value) => {
+        const author = String(value);
+
+        return (
+          <Box
             sx={{
-              width: 26,
-              height: 26,
-              fontSize: 11,
-              fontWeight: 700,
-              bgcolor: alpha(getAvatarColor(params.row.author), 0.13),
-              color: getAvatarColor(params.row.author)
+              display: 'flex',
+              alignItems: 'center',
+              gap: 1.5
             }}
           >
-            {getInitials(params.row.author)}
-          </Avatar>
+            <Avatar
+              sx={{
+                width: 26,
+                height: 26,
+                fontSize: 11,
+                fontWeight: 700,
+                bgcolor: alpha(getAvatarColor(author), 0.13),
+                color: getAvatarColor(author)
+              }}
+            >
+              {getInitials(author)}
+            </Avatar>
 
-          <Typography
-            variant="body2"
-            color="text.secondary"
-            fontWeight={500}
-            noWrap
-          >
-            {params.row.author}
-          </Typography>
-        </Box>
-      )
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              fontWeight={500}
+              noWrap
+            >
+              {author}
+            </Typography>
+          </Box>
+        );
+      }
     },
     {
-      field: 'status',
-      headerName: 'Status',
-      flex: 1,
+      id: 'status',
+      label: 'Status',
+      sortable: true,
       minWidth: 130,
 
-      renderCell: (params) => {
-        const style = getStatusStyle(params.row.status);
+      render: (value) => {
+        const status = value as PostStatus;
+        const style = getStatusStyle(status);
 
         return (
           <Box
@@ -379,58 +418,73 @@ const ManagePostsPage = () => {
               }}
             />
 
-            {params.row.status}
+            {status}
           </Box>
         );
       }
     },
     {
-      field: 'date',
-      headerName: 'Date',
-      flex: 1,
+      id: 'date',
+      label: 'Date',
+      sortable: true,
       minWidth: 130,
 
-      renderCell: (params) => (
-        <Tooltip title={formatFullDate(params.row.date)} arrow>
-          <Typography variant="body2" color="text.secondary" fontWeight={500}>
-            {formatRelativeDate(params.row.date)}
-          </Typography>
-        </Tooltip>
-      )
+      render: (value) => {
+        const date = String(value);
+
+        return (
+          <Tooltip title={formatFullDate(date)} arrow>
+            <Typography variant="body2" color="text.secondary" fontWeight={500}>
+              {formatRelativeDate(date)}
+            </Typography>
+          </Tooltip>
+        );
+      }
     },
     {
-      field: 'actions',
-      headerName: '',
-      sortable: false,
-      filterable: false,
-      width: 60,
+      id: 'actions',
+      label: '',
       align: 'right',
+      sortable: false,
+      width: 60,
 
-      renderCell: () => (
-        <Tooltip title="More actions" arrow>
-          <IconButton
-            size="small"
-            onClick={handleMenuOpen}
-            sx={{
-              color: theme.palette.text.secondary,
+      render: (_value, row) => {
+        const post = filteredRows.find((item) => item.id === row.id);
 
-              '&:hover': {
-                color: theme.colors.primary.main,
-                bgcolor: alpha(theme.colors.primary.main, 0.08)
-              }
-            }}
-          >
-            <MoreVertIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-      )
+        if (!post) {
+          return null;
+        }
+
+        return (
+          <Tooltip title="More actions" arrow>
+            <IconButton
+              size="small"
+              onClick={(event) => handleMenuOpen(event, post)}
+              sx={{
+                color: theme.palette.text.secondary,
+
+                '&:hover': {
+                  color: theme.colors.primary.main,
+                  bgcolor: alpha(theme.colors.primary.main, 0.08)
+                }
+              }}
+            >
+              <MoreVertIcon fontSize="small" />
+            </IconButton>
+          </Tooltip>
+        );
+      }
     }
   ];
 
+  // ─────────────────────────────────────────────────────────
   // Render
+  // ─────────────────────────────────────────────────────────
+
   return (
     <Box>
       {/* Header */}
+
       <Box
         sx={{
           display: 'flex',
@@ -486,7 +540,8 @@ const ManagePostsPage = () => {
         </Button>
       </Box>
 
-      {/* Stats Strip */}
+      {/* Statistics */}
+
       <Stack
         direction={{
           xs: 'column',
@@ -532,33 +587,67 @@ const ManagePostsPage = () => {
         />
       </Stack>
 
-      {/* Main Card - Extracted Component */}
-      <PostsTable
-        rows={filteredRows}
+      {/* Active Filter */}
+
+      {hasActiveFilter && (
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            mb: 2,
+            gap: 1
+          }}
+        >
+          <Typography variant="body2" color="text.secondary" fontWeight={500}>
+            Showing {statusFilter.toLowerCase()} posts
+          </Typography>
+
+          <Button
+            size="small"
+            onClick={handleClearFilters}
+            sx={{
+              textTransform: 'none',
+              fontWeight: 600,
+              color: theme.colors.primary.main
+            }}
+          >
+            Clear filter
+          </Button>
+        </Box>
+      )}
+
+      {/* Shared DataTable Component */}
+
+      <DataTable
+        title="Posts"
+        description="Manage your logistics news and updates."
+        rows={tableRows}
         columns={columns}
-        search={search}
-        onSearchChange={setSearch}
-        hasActiveFilter={hasActiveFilter}
-        onClearFilters={handleClearFilters}
-        selectionModel={selectionModel}
-        onSelectionModelChange={setSelectionModel}
-        totalPosts={MOCK_POSTS.length}
+        rowsPerPage={5}
+        variant="toolkit"
+        headerVariant="default"
+        emptyMessage={
+          hasActiveFilter
+            ? `No ${statusFilter.toLowerCase()} posts found.`
+            : 'No posts available.'
+        }
       />
 
       {/* Row Actions Menu */}
+
       <Menu
         anchorEl={menuAnchor}
         open={Boolean(menuAnchor)}
         onClose={handleMenuClose}
         disableScrollLock
-        BackdropProps={{
-          invisible: true,
-          sx: {
-            backgroundColor: 'transparent !important',
-            backdropFilter: 'none !important',
-            WebkitBackdropFilter: 'none !important',
-            opacity: '0 !important'
-          }
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'right'
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right'
         }}
         PaperProps={{
           elevation: 0,

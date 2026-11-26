@@ -1,4 +1,3 @@
-
 import { Drawer as MuiDrawer, Box, IconButton, useTheme } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { useContext } from 'react';

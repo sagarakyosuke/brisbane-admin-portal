@@ -1,4 +1,3 @@
-
 import {
   Box,
   List,
@@ -27,9 +26,7 @@ const Sidebar = () => {
 
   const isDarkMode = theme.palette.mode === 'dark';
 
-  const currentLogo = isDarkMode
-    ? BRANDING_LOGOS.dark
-    : BRANDING_LOGOS.light;
+  const currentLogo = isDarkMode ? BRANDING_LOGOS.dark : BRANDING_LOGOS.light;
 
   return (
     <Box
@@ -211,9 +208,7 @@ const Sidebar = () => {
                     zIndex: 1
                   }}
                 >
-                  <ListItemIcon>
-                    {item.icon}
-                  </ListItemIcon>
+                  <ListItemIcon>{item.icon}</ListItemIcon>
 
                   <ListItemText
                     primary={item.name}
