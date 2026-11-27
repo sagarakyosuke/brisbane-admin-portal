@@ -1,12 +1,23 @@
-import { Box, Chip, Divider, Paper, Stack, Typography } from '@mui/material';
+
+import type { ReactNode } from 'react';
+
+import {
+  Box,
+  Divider,
+  Paper,
+  Stack,
+  Typography
+} from '@mui/material';
 
 import CheckCircleOutlinedIcon from '@mui/icons-material/CheckCircleOutlined';
 import ErrorOutlineOutlinedIcon from '@mui/icons-material/ErrorOutlineOutlined';
+import FavoriteBorderOutlinedIcon from '@mui/icons-material/FavoriteBorderOutlined';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import NotificationsOutlinedIcon from '@mui/icons-material/NotificationsOutlined';
-import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined';
 import StarOutlinedIcon from '@mui/icons-material/StarOutlined';
-import FavoriteBorderOutlinedIcon from '@mui/icons-material/FavoriteBorderOutlined';
+import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined';
+
+import Badge from '@/features/components/Toolkits/Badge';
 
 const BadgeGroup = ({
   title,
@@ -15,7 +26,7 @@ const BadgeGroup = ({
 }: {
   title: string;
   description?: string;
-  children: React.ReactNode;
+  children: ReactNode;
 }) => (
   <Box>
     <Stack spacing={0.5} sx={{ mb: 2 }}>
@@ -44,13 +55,27 @@ const BadgeGroup = ({
   </Box>
 );
 
-const BadgeCard = ({ children }: { children: React.ReactNode }) => (
+const BadgeCard = ({
+  children
+}: {
+  children: ReactNode;
+}) => (
   <Paper
     variant="outlined"
     sx={{
       p: { xs: 2, sm: 3 },
       borderRadius: 2,
-      height: '100%'
+      height: '100%',
+      transition: (theme) =>
+        theme.transitions.create(
+          ['border-color', 'box-shadow'],
+          { duration: theme.transitions.duration.short }
+        ),
+
+      '&:hover': {
+        borderColor: 'action.disabled',
+        boxShadow: (theme) => theme.shadows[1]
+      }
     }}
   >
     {children}
@@ -61,15 +86,28 @@ const BadgesSection = () => {
   return (
     <Stack spacing={3}>
       <Box>
-        <Typography variant="h5" fontWeight={700}>
+        <Typography
+          variant="h6"
+          fontWeight={700}
+          sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' } }}
+        >
           Badges
         </Typography>
 
-        <Typography variant="body2" color="text.secondary" sx={{ mt: 0.75 }}>
-          Badge variations for labels, statuses, notifications, and visual
-          indicators.
+        <Typography
+          variant="body2"
+          color="text.secondary"
+          sx={{
+            mt: 0.5,
+            fontSize: { xs: '0.8rem', sm: '0.875rem' },
+            lineHeight: 1.6
+          }}
+        >
+          A collection of reusable badge styles, colors, variants, and sizes for displaying status and labels.
         </Typography>
       </Box>
+
+      <Divider />
 
       <Box
         sx={{
@@ -86,30 +124,35 @@ const BadgesSection = () => {
             title="Default Badges"
             description="Basic badge styles for general use."
           >
-            <Chip label="Default" />
-            <Chip label="Primary" color="primary" />
-            <Chip label="Secondary" color="secondary" />
+            <Badge label="Default" />
+            <Badge label="Primary" color="primary" />
+            <Badge label="Secondary" color="secondary" />
           </BadgeGroup>
         </BadgeCard>
 
         <BadgeCard>
           <BadgeGroup
             title="Plain Badges"
-            description="Minimal badges with subtle backgrounds."
+            description="Minimal badges with subtle theme-based backgrounds."
           >
-            <Chip label="Plain" variant="filled" color="default" />
-            <Chip
+            <Badge label="Plain" variant="plain" />
+
+            <Badge
               label="Primary"
-              variant="filled"
               color="primary"
-              sx={{ bgcolor: 'action.hover', color: 'primary.main' }}
+              variant="plain"
             />
-            <Chip
+
+            <Badge
               label="Success"
-              sx={{
-                bgcolor: 'success.light',
-                color: 'success.dark'
-              }}
+              color="success"
+              variant="plain"
+            />
+
+            <Badge
+              label="Warning"
+              color="warning"
+              variant="plain"
             />
           </BadgeGroup>
         </BadgeCard>
@@ -119,10 +162,10 @@ const BadgesSection = () => {
             title="Semantic Badges"
             description="Use colors to communicate different states."
           >
-            <Chip label="Success" color="success" />
-            <Chip label="Warning" color="warning" />
-            <Chip label="Error" color="error" />
-            <Chip label="Info" color="info" />
+            <Badge label="Success" color="success" />
+            <Badge label="Warning" color="warning" />
+            <Badge label="Error" color="error" />
+            <Badge label="Info" color="info" />
           </BadgeGroup>
         </BadgeCard>
 
@@ -131,34 +174,61 @@ const BadgesSection = () => {
             title="Outlined Badges"
             description="Outlined variations with transparent backgrounds."
           >
-            <Chip label="Default" variant="outlined" />
-            <Chip label="Primary" color="primary" variant="outlined" />
-            <Chip label="Success" color="success" variant="outlined" />
-            <Chip label="Warning" color="warning" variant="outlined" />
+            <Badge
+              label="Default"
+              variant="outlined"
+            />
+
+            <Badge
+              label="Primary"
+              color="primary"
+              variant="outlined"
+            />
+
+            <Badge
+              label="Success"
+              color="success"
+              variant="outlined"
+            />
+
+            <Badge
+              label="Warning"
+              color="warning"
+              variant="outlined"
+            />
+
+            <Badge
+              label="Error"
+              color="error"
+              variant="outlined"
+            />
           </BadgeGroup>
         </BadgeCard>
 
         <BadgeCard>
           <BadgeGroup
             title="Icon Badges"
-            description="Badges with leading icons."
+            description="Badges with leading icons for additional context."
           >
-            <Chip
+            <Badge
               icon={<CheckCircleOutlinedIcon />}
               label="Verified"
               color="success"
             />
-            <Chip
+
+            <Badge
               icon={<WarningAmberOutlinedIcon />}
               label="Warning"
               color="warning"
             />
-            <Chip
+
+            <Badge
               icon={<ErrorOutlineOutlinedIcon />}
               label="Error"
               color="error"
             />
-            <Chip
+
+            <Badge
               icon={<InfoOutlinedIcon />}
               label="Information"
               color="info"
@@ -169,24 +239,28 @@ const BadgesSection = () => {
         <BadgeCard>
           <BadgeGroup
             title="Icon Only Badges"
-            description="Compact badges for visual indicators."
+            description="Compact indicators for limited interface space."
           >
-            <Chip
+            <Badge
               icon={<StarOutlinedIcon />}
-              label="Featured"
-              variant="outlined"
               color="primary"
+              variant="plain"
+              size="small"
+              aria-label="Featured"
             />
-            <Chip
+
+            <Badge
               icon={<FavoriteBorderOutlinedIcon />}
-              label="Favorite"
-              variant="outlined"
               color="secondary"
+              variant="outlined"
+              aria-label="Favorite"
             />
-            <Chip
+
+            <Badge
               icon={<NotificationsOutlinedIcon />}
-              label="Notification"
               color="info"
+              size="large"
+              aria-label="Notification"
             />
           </BadgeGroup>
         </BadgeCard>
@@ -196,18 +270,22 @@ const BadgesSection = () => {
             title="Badge Sizes"
             description="Different sizes for different interface requirements."
           >
-            <Chip label="Small" size="small" color="primary" />
-            <Chip label="Medium" size="medium" color="primary" />
-            <Chip
-              label="Large"
+            <Badge
+              label="Small"
+              size="small"
               color="primary"
-              sx={{
-                height: 40,
-                fontSize: '0.95rem',
-                '& .MuiChip-label': {
-                  px: 2
-                }
-              }}
+            />
+
+            <Badge
+              label="Medium"
+              size="medium"
+              color="primary"
+            />
+
+            <Badge
+              label="Large"
+              size="large"
+              color="primary"
             />
           </BadgeGroup>
         </BadgeCard>
@@ -217,21 +295,45 @@ const BadgesSection = () => {
             title="Status Badges"
             description="Common status indicators for dashboard interfaces."
           >
-            <Chip label="Active" color="success" size="small" />
-            <Chip label="Pending" color="warning" size="small" />
-            <Chip label="Inactive" color="default" size="small" />
-            <Chip label="Rejected" color="error" size="small" />
-            <Chip label="Processing" color="info" size="small" />
+            <Badge
+              label="Active"
+              color="success"
+              size="small"
+              variant="plain"
+            />
+
+            <Badge
+              label="Pending"
+              color="warning"
+              size="small"
+              variant="plain"
+            />
+
+            <Badge
+              label="Inactive"
+              color="default"
+              size="small"
+              variant="plain"
+            />
+
+            <Badge
+              label="Rejected"
+              color="error"
+              size="small"
+              variant="plain"
+            />
+
+            <Badge
+              label="Processing"
+              color="info"
+              size="small"
+              variant="plain"
+            />
           </BadgeGroup>
         </BadgeCard>
       </Box>
 
       <Divider />
-
-      <Typography variant="caption" color="text.secondary">
-        Badge examples use MUI Chip components and remain responsive across
-        screen sizes.
-      </Typography>
     </Stack>
   );
 };
