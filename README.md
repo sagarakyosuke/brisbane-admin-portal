@@ -1,62 +1,187 @@
+# Brisbane Logistics Admin Portal
+
 <p align="center">
-    <a href="https://bloomui.com" title="BloomUI.com">
-        <img src="https://bloomui.s3.us-east-2.amazonaws.com/tokyo-logo.png" alt="Tokyo Free White Typescript React Admin Dashboard">
-    </a>
+    <img src="./public/assets/icons/brisbane.svg" alt="Brisbane Logistics Logo" width="180">
 </p>
+
 <h1 align="center">
-    <b>Tokyo Free White Typescript React Admin Dashboard</b>
-    <br>
-    <a href="https://twitter.com/intent/tweet?url=https://bloomui.com&text=I like this React admin dashboard">
-        <img src="https://img.shields.io/twitter/url/http/shields.io.svg?style=social" />
-    </a>
+    <b>Brisbane Logistics Admin Portal</b>
 </h1>
+
+<p align="center">
+    A modern administration portal for managing Brisbane Logistics operations, content, users, and business processes.
+</p>
+
 <div align="center">
 
 ![version](https://img.shields.io/badge/version-2.0.0-blue.svg)
-![license](https://img.shields.io/badge/license-MIT-blue.svg)
+![frontend](https://img.shields.io/badge/frontend-React%20%7C%20TypeScript-blue.svg)
+![ui](https://img.shields.io/badge/UI-Material--UI-blue.svg)
+![backend](https://img.shields.io/badge/backend-Laravel-red.svg)
 
-<a href="https://bloomui.com/product/tokyo-free-white-react-typescript-material-ui-admin-dashboard/"><img src="https://bloomui.s3.us-east-2.amazonaws.com/tokyo-free-white-react-typescript-material-ui-admin-dashboard.jpg" /></a>
 </div>
 
-<a href="https://bloomui.com/product/tokyo-free-white-react-typescript-material-ui-admin-dashboard/"><h3>Free React Typescript Admin Dashboard Template built with Material-UI</h3></a>
-<p>
-    This free and open source admin dashboard template is built for React and it’s bootstrapped from Facebook’s create-react-app. All NPM dependencies are up to date and it contains multiple fully customized components based on the popular frontend components framework, Material-UI.
-</p>
-<p>
-Tokyo Free White Typescript Dashboard features a nice classic light & clean design and color scheme.
-</p>
-<p>
-You can customize the color scheme and style by editing a single variables files. This Typescript admin dashboard doesn’t use SCSS stylesheets but the more modern approach with styled-components.
-</p>
-<p>
-We’ve included a few page examples for most used user flows that will give you a solid base for getting started with your new project’s development. With very light modifications you can even integrate Tokyo Free White Typescript Dashboard into existing projects giving them a much deserved makeover.
-</p>
-
----
-<h3>Updrade to PRO</h3>
-
-<p>If you're looking for more features like translations, complex user flows, redux examples and more,  we recommend taking a look at the premium version (Tokyo White Typescript Dashboard) on <a href="https://bloomui.com">bloomui.com</a></p>
-
 ---
 
-<h2>
-    Quick Start
-</h2>
-<ol>
-    <li>Make sure you have the latest stable versions for Node.js and NPM installed</li>
-    <li>Clone repository: <code>git clone https://github.com/bloomui/tokyo-free-white-react-admin-dashboard.git</code></li>
-    <li>Install dependencies: Run <code>npm install</code> inside the project folder</li>
-    <li>Start dev server: After the install finishes, run <code>npm run start</code>. A browser window will open on http://localhost:3000 where you''ll see the live preview</li>
-</ol>
+## Overview
+
+The Brisbane Logistics Admin Portal is a modern web-based administration system developed to support the company's internal management and operational requirements.
+
+Built with React, TypeScript, and Material UI (MUI), the application provides a responsive and structured interface for managing administrative functions and interacting with the Laravel backend API.
+
+The system follows a modular architecture designed to support maintainability, scalability, and future enhancements.
+
+## Technology Stack
+
+### Frontend
+- React
+- TypeScript
+- Material UI (MUI)
+- Vite
+- Axios
+
+### Backend
+- PHP
+- Laravel
+- Laravel Sanctum
+- RESTful API
+- AES-256-GCM API encryption
+
+### Development Environment
+- Node.js
+- NPM
+- Git
+
+## Core Features
+
+- Administrative dashboard
+- User authentication and session management
+- API integration with Laravel
+- Encrypted API request and response handling
+- Centralized API error handling
+- Modular and reusable components
+- Responsive user interface
+- Centralized theme and styling configuration
+
+## Project Structure
+
+The frontend follows a feature-oriented architecture, separating application features, reusable components, utilities, and shared configurations.
+
+```text
+brisbane-logistics/
+│
+├── app/                  # React frontend
+│   ├── public/
+│   ├── src/
+│   ├── package.json
+│   └── ...
+│
+└── backend/              # Laravel API
+    ├── app/
+    ├── bootstrap/
+    ├── config/
+    ├── routes/
+    └── ...
+```
+
+*The directory structure above is a high-level illustration. Refer to the actual repository for the complete structure.*
+
+## Quick Start
+
+### Requirements
+
+Make sure the following are installed:
+
+- Node.js (LTS)
+- NPM
+- PHP (compatible with the Laravel project)
+- Composer
+- MySQL or MariaDB
+
+### Frontend Installation
+
+1. Navigate to the frontend directory:
+
+   ```bash
+   cd app
+   ```
+
+2. Install dependencies:
+
+   ```bash
+   npm install
+   ```
+
+3. Configure the frontend environment variables using the provided environment example.
+
+4. Start the development server:
+
+   ```bash
+   npm run dev
+   ```
+
+### Backend Installation
+
+1. Navigate to the Laravel backend directory.
+
+2. Install PHP dependencies:
+
+   ```bash
+   composer install
+   ```
+
+3. Configure the backend environment:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+4. Generate the Laravel application key:
+
+   ```bash
+   php artisan key:generate
+   ```
+
+5. Configure the database credentials and other required environment variables.
+
+6. Run database migrations:
+
+   ```bash
+   php artisan migrate
+   ```
+
+7. Start the Laravel development server:
+
+   ```bash
+   php artisan serve
+   ```
+
+## Security
+
+The application uses Laravel Sanctum for session-based authentication and AES-256-GCM for API payload encryption.
+
+Sensitive configuration values, application keys, and credentials must be maintained in environment variables and must never be committed to version control.
+
+HTTPS should be enabled in production.
+
+## Development
+
+The project is maintained using Git version control.
+
+Before committing changes, ensure that:
+
+- The application builds successfully.
+- Existing functionality remains operational.
+- API integrations are working.
+- No environment secrets or credentials are included in commits.
+
+## License
+
+This project is maintained for Brisbane Logistics.
+
+Third-party libraries and dependencies remain subject to their respective licenses.
 
 ---
 
-<h2>
-    Technical Support
-</h2>
-<p>
-    You can open a support ticket by sending an email here: <a href="mailto:support@bloomui.freshdesk.com" title="Open Support Ticket">
-        support@bloomui.freshdesk.com
-    </a>
-</p>
-# brisbane-admin-portal
+**Brisbane Logistics**  
+Admin Portal
