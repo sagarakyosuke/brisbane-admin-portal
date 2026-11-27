@@ -1,3 +1,4 @@
+
 import {
   createApi,
   fetchBaseQuery,
@@ -10,7 +11,7 @@ import {
 // Types
 // -----------------------------------------------------------------------------
 
-interface EncryptedApiResponse {
+interface EncryptedApiEnvelope {
   version: number;
   nonce: string;
   tag: string;
@@ -19,6 +20,10 @@ interface EncryptedApiResponse {
 
 interface EncryptedResponseWrapper {
   response: string;
+}
+
+interface EncryptedRequestWrapper {
+  payload: string;
 }
 
 // -----------------------------------------------------------------------------
@@ -34,6 +39,22 @@ const baseQuery = fetchBaseQuery({
   timeout: 20000,
   prepareHeaders: (headers) => {
     headers.set('Accept', 'application/json');
+
+    // Laravel CSRF token.
+    if (typeof document !== 'undefined') {
+      const xsrfCookie = document.cookie
+        .split(';')
+        .map((cookie) => cookie.trim())
+        .find((cookie) => cookie.startsWith('XSRF-TOKEN='));
+
+      if (xsrfCookie) {
+        const token = decodeURIComponent(
+          xsrfCookie.substring('XSRF-TOKEN='.length)
+        );
+
+        headers.set('X-XSRF-TOKEN', token);
+      }
+    }
 
     return headers;
   }
@@ -57,6 +78,20 @@ const base64ToBytes = (value: unknown, field: string): Uint8Array => {
   }
 };
 
+const bytesToBase64 = (bytes: Uint8Array): string => {
+  let binary = '';
+
+  const chunkSize = 0x8000;
+
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    binary += String.fromCharCode(
+      ...bytes.subarray(index, index + chunkSize)
+    );
+  }
+
+  return btoa(binary);
+};
+
 const toArrayBuffer = (bytes: Uint8Array): ArrayBuffer => {
   const buffer = new ArrayBuffer(bytes.length);
 
@@ -65,24 +100,88 @@ const toArrayBuffer = (bytes: Uint8Array): ArrayBuffer => {
   return buffer;
 };
 
-// -----------------------------------------------------------------------------
-// Decryption
-// -----------------------------------------------------------------------------
-
-const decryptResponse = async (encryptedResponse: string): Promise<unknown> => {
+const getEncryptionKey = async (
+  usage: KeyUsage[]
+): Promise<CryptoKey> => {
   if (!API_ENCRYPTION_KEY) {
     throw new Error('VITE_API_ENCRYPTION_KEY is not configured.');
   }
 
-  // Decode outer Base64 envelope.
-  const envelopeBytes = base64ToBytes(encryptedResponse, 'response envelope');
+  const key = base64ToBytes(API_ENCRYPTION_KEY, 'encryption key');
 
-  let envelope: EncryptedApiResponse;
+  if (key.length !== 32) {
+    throw new Error('AES-256 key must contain exactly 32 bytes.');
+  }
+
+  return crypto.subtle.importKey(
+    'raw',
+    toArrayBuffer(key),
+    { name: 'AES-GCM' },
+    false,
+    usage
+  );
+};
+
+// -----------------------------------------------------------------------------
+// Request Encryption
+// -----------------------------------------------------------------------------
+
+const encryptRequest = async (data: unknown): Promise<string> => {
+  const cryptoKey = await getEncryptionKey(['encrypt']);
+
+  // Generate a unique 12-byte nonce for this request.
+  const nonce = crypto.getRandomValues(new Uint8Array(12));
+
+  const plaintext = new TextEncoder().encode(JSON.stringify(data));
+
+  const encryptedBuffer = await crypto.subtle.encrypt(
+    {
+      name: 'AES-GCM',
+      iv: toArrayBuffer(nonce),
+      tagLength: 128
+    },
+    cryptoKey,
+    toArrayBuffer(plaintext)
+  );
+
+  // Web Crypto returns ciphertext followed by the authentication tag.
+  const encryptedBytes = new Uint8Array(encryptedBuffer);
+
+  const ciphertext = encryptedBytes.slice(0, -16);
+  const tag = encryptedBytes.slice(-16);
+
+  const envelope: EncryptedApiEnvelope = {
+    version: 1,
+    nonce: bytesToBase64(nonce),
+    tag: bytesToBase64(tag),
+    ciphertext: bytesToBase64(ciphertext)
+  };
+
+  // Encode the complete envelope as Base64.
+  return bytesToBase64(
+    new TextEncoder().encode(JSON.stringify(envelope))
+  );
+};
+
+// -----------------------------------------------------------------------------
+// Response Decryption
+// -----------------------------------------------------------------------------
+
+const decryptResponse = async (
+  encryptedResponse: string
+): Promise<unknown> => {
+  // Decode the outer Base64 envelope.
+  const envelopeBytes = base64ToBytes(
+    encryptedResponse,
+    'response envelope'
+  );
+
+  let envelope: EncryptedApiEnvelope;
 
   try {
     envelope = JSON.parse(
       new TextDecoder().decode(envelopeBytes)
-    ) as EncryptedApiResponse;
+    ) as EncryptedApiEnvelope;
   } catch {
     throw new Error('Unable to parse AES-GCM envelope.');
   }
@@ -101,13 +200,6 @@ const decryptResponse = async (encryptedResponse: string): Promise<unknown> => {
   const tag = base64ToBytes(envelope.tag, 'tag');
   const ciphertext = base64ToBytes(envelope.ciphertext, 'ciphertext');
 
-  const key = base64ToBytes(API_ENCRYPTION_KEY, 'encryption key');
-
-  // Validate AES-256-GCM lengths.
-  if (key.length !== 32) {
-    throw new Error('AES-256 key must contain exactly 32 bytes.');
-  }
-
   if (nonce.length !== 12) {
     throw new Error('AES-GCM nonce must contain exactly 12 bytes.');
   }
@@ -116,17 +208,12 @@ const decryptResponse = async (encryptedResponse: string): Promise<unknown> => {
     throw new Error('AES-GCM tag must contain exactly 16 bytes.');
   }
 
-  // Import key.
-  const cryptoKey = await crypto.subtle.importKey(
-    'raw',
-    toArrayBuffer(key),
-    { name: 'AES-GCM' },
-    false,
-    ['decrypt']
-  );
+  const cryptoKey = await getEncryptionKey(['decrypt']);
 
   // Web Crypto expects ciphertext followed by the authentication tag.
-  const encryptedBytes = new Uint8Array(ciphertext.length + tag.length);
+  const encryptedBytes = new Uint8Array(
+    ciphertext.length + tag.length
+  );
 
   encryptedBytes.set(ciphertext);
   encryptedBytes.set(tag, ciphertext.length);
@@ -148,7 +235,22 @@ const decryptResponse = async (encryptedResponse: string): Promise<unknown> => {
 };
 
 // -----------------------------------------------------------------------------
-// Base Query With Decryption
+// Login Request Detection
+// -----------------------------------------------------------------------------
+
+const isLoginRequest = (args: string | FetchArgs): boolean => {
+  if (typeof args === 'string') {
+    return false;
+  }
+
+  const url = args.url.replace(/^\/+/, '');
+  const method = (args.method ?? 'GET').toUpperCase();
+
+  return url === 'auth/login' && method === 'POST';
+};
+
+// -----------------------------------------------------------------------------
+// Base Query With Encryption and Decryption
 // -----------------------------------------------------------------------------
 
 const baseQueryWithDecryption: BaseQueryFn<
@@ -156,19 +258,72 @@ const baseQueryWithDecryption: BaseQueryFn<
   unknown,
   FetchBaseQueryError
 > = async (args, api, extraOptions) => {
-  const result = await baseQuery(args, api, extraOptions);
+  let requestArgs = args;
 
-  if (result.error || result.data == null) {
+  // ---------------------------------------------------------------------------
+  // Encrypt Login Request
+  // ---------------------------------------------------------------------------
+
+  if (isLoginRequest(args) && typeof args !== 'string') {
+    try {
+      const encryptedPayload = await encryptRequest(args.body);
+
+      const encryptedWrapper: EncryptedRequestWrapper = {
+        payload: encryptedPayload
+      };
+
+      requestArgs = {
+        ...args,
+        body: encryptedWrapper
+      };
+    } catch (error) {
+      console.error('API request encryption failed:', error);
+
+      return {
+        error: {
+          status: 'CUSTOM_ERROR',
+          error:
+            error instanceof Error
+              ? error.message
+              : 'Request encryption failed.'
+        }
+      };
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Send Request
+  // ---------------------------------------------------------------------------
+
+  const result = await baseQuery(requestArgs, api, extraOptions);
+
+  // ---------------------------------------------------------------------------
+  // Preserve Original Backend Errors
+  // ---------------------------------------------------------------------------
+
+  if (result.error) {
     return result;
   }
 
-  if (typeof result.data !== 'object' || !('response' in result.data)) {
+  if (result.data == null) {
+    return result;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Decrypt Successful Backend Response
+  // ---------------------------------------------------------------------------
+
+  if (
+    typeof result.data !== 'object' ||
+    !('response' in result.data)
+  ) {
     return result;
   }
 
   try {
-    const encryptedResponse = (result.data as EncryptedResponseWrapper)
-      .response;
+    const encryptedResponse = (
+      result.data as EncryptedResponseWrapper
+    ).response;
 
     const decryptedData = await decryptResponse(encryptedResponse);
 
@@ -177,16 +332,17 @@ const baseQueryWithDecryption: BaseQueryFn<
       meta: result.meta
     };
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : 'Unknown API decryption error.';
-
     console.error('API response decryption failed:', error);
 
     return {
       error: {
         status: 'CUSTOM_ERROR',
-        error: message
-      }
+        error:
+          error instanceof Error
+            ? error.message
+            : 'Response decryption failed.'
+      },
+      meta: result.meta
     };
   }
 };
@@ -198,6 +354,6 @@ const baseQueryWithDecryption: BaseQueryFn<
 export const apiSlice = createApi({
   reducerPath: 'api',
   baseQuery: baseQueryWithDecryption,
-  tagTypes: ['CaseStudies', 'NewsBlogs', 'Faqs', 'AboutUs', 'Cookies'],
+  tagTypes: ['Login', 'Cookies'],
   endpoints: () => ({})
 });
