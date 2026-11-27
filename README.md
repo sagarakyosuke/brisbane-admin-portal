@@ -2,7 +2,7 @@
 
 <p align="center">
     <img
-        src="./app/src/features/assets/logo/main-logo.png"
+        src="./src/features/assets/logo/main-logo.png"
         alt="Brisbane Logistics Logo"
         width="180"
     >
