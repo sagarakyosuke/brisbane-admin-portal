@@ -26,7 +26,7 @@ const Sidebar = () => {
 
   const isDarkMode = theme.palette.mode === 'dark';
 
-  const currentLogo = isDarkMode ? BRANDING_LOGOS.dark : BRANDING_LOGOS.light;
+  const currentLogo = isDarkMode ? BRANDING_LOGOS.compact : BRANDING_LOGOS.light;
 
   return (
     <Box
