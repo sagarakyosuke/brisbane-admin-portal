@@ -1,7 +1,11 @@
 # Brisbane Logistics Admin Portal
 
 <p align="center">
-    <img src="./public/assets/icons/brisbane.svg" alt="Brisbane Logistics Logo" width="180">
+    <img
+        src="./app/src/features/assets/logo/main-logo.png"
+        alt="Brisbane Logistics Logo"
+        width="180"
+    >
 </p>
 
 <h1 align="center">
