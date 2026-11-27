@@ -1,4 +1,6 @@
-import { useState, FormEvent } from 'react';
+
+import { useState, type FormEvent } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import {
   alpha,
@@ -24,10 +26,89 @@ import {
 } from '@mui/icons-material';
 
 import { ThemeToggle } from '@/features/components/ThemeToggle/ThemeToggle';
+import Badge from '@/features/components/Toolkits/Badge';
+import { useOverlayContext } from '@/features/components/Loader/Overlay';
 import { BRANDING, BRANDING_LOGOS } from '@/features/utils/data/branding';
+
+import {
+  initializeCsrfCookie,
+  useLoginMutation
+} from './api-hook';
+
+// -----------------------------------------------------------------------------
+// Types
+// -----------------------------------------------------------------------------
+
+interface LoginFieldErrors {
+  username?: string;
+  password?: string;
+}
+
+interface LoginErrorDetails {
+  message: string;
+  errors: LoginFieldErrors;
+}
+
+// -----------------------------------------------------------------------------
+// Helpers
+// -----------------------------------------------------------------------------
+
+const getLoginErrorDetails = (error: unknown): LoginErrorDetails => {
+  const errorObject =
+    typeof error === 'object' && error !== null
+      ? (error as {
+          message?: unknown;
+          data?: unknown;
+        })
+      : {};
+
+  const responseData =
+    typeof errorObject.data === 'object' && errorObject.data !== null
+      ? (errorObject.data as {
+          message?: unknown;
+          errors?: Record<string, unknown>;
+        })
+      : null;
+
+  const validationErrors = responseData?.errors ?? {};
+
+  const getFirstError = (value: unknown): string | undefined => {
+    if (Array.isArray(value) && typeof value[0] === 'string') {
+      return value[0];
+    }
+
+    return typeof value === 'string' ? value : undefined;
+  };
+
+  let message = 'Unable to sign in. Please try again.';
+
+  if (typeof responseData?.message === 'string') {
+    message = responseData.message;
+  } else if (typeof errorObject.data === 'string') {
+    message = errorObject.data;
+  } else if (typeof errorObject.message === 'string') {
+    message = errorObject.message;
+  }
+
+  return {
+    message,
+    errors: {
+      username: getFirstError(validationErrors.username),
+      password: getFirstError(validationErrors.password)
+    }
+  };
+};
+
+// -----------------------------------------------------------------------------
+// Login Page
+// -----------------------------------------------------------------------------
 
 export const LoginPage = () => {
   const theme = useTheme();
+  const navigate = useNavigate();
+
+  const { showOverlay, hideOverlay } = useOverlayContext();
+  const [login, { isLoading }] = useLoginMutation();
 
   const isDesktop = useMediaQuery('(min-width: 960px)');
   const isShortScreen = useMediaQuery('(max-height: 700px)');
@@ -46,11 +127,62 @@ export const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const [fieldErrors, setFieldErrors] = useState<LoginFieldErrors>({});
+  const [formMessage, setFormMessage] = useState('');
+
+  // ---------------------------------------------------------------------------
+  // Form Submission
+  // ---------------------------------------------------------------------------
+
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
-    // Laravel authentication API integration will be added here.
+    const username = email.trim();
+
+    const validationErrors: LoginFieldErrors = {};
+
+    if (!username) {
+      validationErrors.username = 'Username or email is required.';
+    }
+
+    if (!password) {
+      validationErrors.password = 'Password is required.';
+    }
+
+    setFieldErrors(validationErrors);
+    setFormMessage('');
+
+    if (Object.keys(validationErrors).length > 0) {
+      return;
+    }
+
+    showOverlay();
+
+    try {
+      // Initialize Laravel's CSRF cookie before authentication.
+      await initializeCsrfCookie();
+
+      // The Laravel authentication endpoint currently expects "username".
+      await login({
+        username,
+        password
+      }).unwrap();
+
+      // Authentication succeeded.
+      navigate('/dashboard', { replace: true });
+    } catch (error) {
+      const details = getLoginErrorDetails(error);
+
+      setFieldErrors(details.errors);
+      setFormMessage(details.message);
+    } finally {
+      hideOverlay();
+    }
   };
+
+  // ---------------------------------------------------------------------------
+  // Input Styles
+  // ---------------------------------------------------------------------------
 
   const inputStyles = {
     width: '100%',
@@ -407,25 +539,57 @@ export const LoginPage = () => {
                   width: '100%'
                 }}
               >
-                {/* Email Field */}
+                {/* Backend / Form Error */}
+                {formMessage && (
+                  <Badge
+                    label={formMessage}
+                    color="error"
+                    variant="plain"
+                    size="small"
+                    sx={{
+                      width: '100%',
+                      height: 'auto',
+                      justifyContent: 'flex-start',
+                      '& .MuiChip-label': {
+                        display: 'block',
+                        whiteSpace: 'normal',
+                        py: 0.75
+                      }
+                    }}
+                  />
+                )}
+
+                {/* Username or Email Field */}
                 <Box sx={{ minWidth: 0 }}>
                   <Typography
                     component="label"
                     htmlFor="login-email"
                     sx={labelStyles}
                   >
-                    Email Address
+                    Username or Email
                   </Typography>
 
                   <TextField
                     id="login-email"
-                    type="email"
+                    type="text"
                     fullWidth
                     required
-                    autoComplete="email"
-                    placeholder="Enter your email address"
+                    autoComplete="username"
+                    placeholder="Enter your username or email"
                     value={email}
-                    onChange={(event) => setEmail(event.target.value)}
+                    error={Boolean(fieldErrors.username)}
+                    helperText={fieldErrors.username}
+                    onChange={(event) => {
+                      setEmail(event.target.value);
+
+                      if (fieldErrors.username || formMessage) {
+                        setFieldErrors((prev) => ({
+                          ...prev,
+                          username: undefined
+                        }));
+                        setFormMessage('');
+                      }
+                    }}
                     InputProps={{
                       startAdornment: (
                         <InputAdornment position="start">
@@ -460,7 +624,19 @@ export const LoginPage = () => {
                     autoComplete="current-password"
                     placeholder="Enter your password"
                     value={password}
-                    onChange={(event) => setPassword(event.target.value)}
+                    error={Boolean(fieldErrors.password)}
+                    helperText={fieldErrors.password}
+                    onChange={(event) => {
+                      setPassword(event.target.value);
+
+                      if (fieldErrors.password || formMessage) {
+                        setFieldErrors((prev) => ({
+                          ...prev,
+                          password: undefined
+                        }));
+                        setFormMessage('');
+                      }
+                    }}
                     InputProps={{
                       startAdornment: (
                         <InputAdornment position="start">
@@ -556,6 +732,7 @@ export const LoginPage = () => {
                   fullWidth
                   variant="contained"
                   endIcon={<ArrowForward />}
+                  disabled={isLoading}
                   sx={{
                     minHeight: 'clamp(42px, 5vh, 48px)',
                     mt: 0.5,
@@ -569,7 +746,7 @@ export const LoginPage = () => {
                     }
                   }}
                 >
-                  Sign In
+                  {isLoading ? 'Signing In...' : 'Sign In'}
                 </Button>
               </Box>
 

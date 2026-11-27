@@ -72,14 +72,20 @@ export const initializeCsrfCookie = async (): Promise<void> => {
         ? JSON.parse(responseText)
         : null;
     } catch {
-      // Keep the original response text when it isn't JSON.
+      // Preserve the original response text.
     }
 
-    // Preserve the original backend status and response body.
-    throw {
-      status: response.status,
-      data: responseData
+    const error = new Error(
+      response.statusText || 'CSRF initialization failed.'
+    ) as Error & {
+      status: number;
+      data: unknown;
     };
+
+    error.status = response.status;
+    error.data = responseData;
+
+    throw error;
   }
 };
 
